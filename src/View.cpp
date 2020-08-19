@@ -6,10 +6,8 @@
 #include "resource.h"
 
 #define TIMER_ID 1
-#define TIMER_TIMEOUT 500
+#define TIMER_TIMEOUT 50
 
-#include "capstray_manifest.h"
-#include "capstray_manifest.uuid.h"
 
 #include <sstream>
 
@@ -31,7 +29,6 @@ void CView::OnAbout( void )
 {
 	std::wstringstream oss;
 	oss << _T( "CapsTray, by Ron Wilson (c) 2010" ) << std::endl;
-	oss << _T( CAPSTRAY_MANIFEST_DATE ) << _T( " [" ) << _T( CAPSTRAY_MANIFEST_VERSION ) << _T( "]" );
 
 	MessageBox( oss.str().c_str(), _T( "About CapsTray" ), MB_OK | MB_ICONINFORMATION );
 }
@@ -90,6 +87,10 @@ void CView::PreCreate( CREATESTRUCT& cs )
 void CView::NotifyIcon( DWORD message, unsigned char state )
 {
 	int idi = IDI_C0N0S0;
+	bool scrolllock_on = state & 0x1;
+	bool numlock_on = state & 0x2;
+	bool capslock_on = state & 0x4;
+
 	switch ( state )
 	{
 		case 0: idi = IDI_C0N0S0; break;
@@ -101,6 +102,12 @@ void CView::NotifyIcon( DWORD message, unsigned char state )
 		case 6: idi = IDI_C1N1S0; break;
 		case 7: idi = IDI_C1N1S1; break;
 		default: break;
+	}
+	if (capslock_on) {
+		idi = IDI_FLAGRU;
+	}
+	else {
+		idi = IDI_FLAGUS;
 	}
 
 	NOTIFYICONDATA nid = { 0 };

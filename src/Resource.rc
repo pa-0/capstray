@@ -45,6 +45,8 @@ IDI_C1N0S0              ICON                    "res/C1N0S0.ico"
 IDI_C1N0S1              ICON                    "res/C1N0S1.ico"
 IDI_C1N1S0              ICON                    "res/C1N1S0.ico"
 IDI_C1N1S1              ICON                    "res/C1N1S1.ico"
+IDI_FLAGRU              ICON                    "res/flag_ru.ico"
+IDI_FLAGUS              ICON                    "res/flag_us.ico"
 
 /////////////////////////////////////////////////////////////////////////////
 //
