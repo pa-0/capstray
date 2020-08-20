@@ -6,10 +6,50 @@
 #include "resource.h"
 
 #define TIMER_ID 1
-#define TIMER_TIMEOUT 50
-
+#define TIMER_TIMEOUT 500
+HHOOK	caps_khook;
+HWND g_hWnd;
 
 #include <sstream>
+
+LRESULT CALLBACK KbdHook(int nCode, WPARAM wParam, LPARAM lParam) {
+	if (nCode < 0)	return CallNextHookEx(caps_khook, nCode, wParam, lParam);
+	if (nCode == HC_ACTION) {
+		KBDLLHOOKSTRUCT *ks = (KBDLLHOOKSTRUCT*)lParam;
+		if (ks->vkCode == VK_CAPITAL && (GetKeyState(VK_SHIFT) >= 0)) {
+			if (wParam == WM_KEYDOWN) {
+				bool capslock_on = 0 != (::GetKeyState(VK_CAPITAL) & 0x0001);
+				int idi = IDI_FLAGRU;
+				if (capslock_on) {
+					idi = IDI_FLAGUS; // если включен, значит он выключится, и надо будет поставить US
+				}
+				else {
+					idi = IDI_FLAGRU;
+				}
+				NOTIFYICONDATA nid = { 0 };
+				nid.cbSize = sizeof(NOTIFYICONDATA);
+				nid.hWnd = g_hWnd;
+				nid.uID = IDW_MAIN;
+				nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+				nid.uCallbackMessage = MSG_TRAYICON;
+				nid.hIcon = (HICON)(::LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(idi), IMAGE_ICON,
+					::GetSystemMetrics(SM_CXSMICON), ::GetSystemMetrics(SM_CYSMICON), 0));
+				lstrcpy(nid.szTip, _T("CapsTray"));
+				Shell_NotifyIcon(NIM_MODIFY, &nid);
+				return CallNextHookEx(caps_khook, nCode, wParam, lParam);
+				//return true; // nothing happens when returning true
+				//HWND hWnd = GetCaretWindow();
+				//if (hWnd) {
+				//	PostMessage(hWnd, WM_INPUTLANGCHANGEREQUEST, 0, (LPARAM)HKL_NEXT);
+				//	return TRUE;
+				//}
+			}
+		}
+	}
+skip:
+	return CallNextHookEx(caps_khook, nCode, wParam, lParam);
+}
+
 
 void CView::OnCreate( void )
 {
@@ -18,8 +58,9 @@ void CView::OnCreate( void )
 
 	// Tasks such as setting the icon, creating child windows, or anything
 	// associated with creating windows are normally performed here.
-
-	::SetTimer( this->GetHwnd(), TIMER_ID, TIMER_TIMEOUT, NULL );
+	g_hWnd = m_hWnd;
+	caps_khook = SetWindowsHookEx(WH_KEYBOARD_LL, KbdHook, GetModuleHandle(0), 0);
+	//::SetTimer( this->GetHwnd(), TIMER_ID, TIMER_TIMEOUT, NULL );
 
 	NotifyIcon( NIM_ADD, m_capsState );
 	ShowWindow( SW_HIDE );
@@ -36,6 +77,7 @@ void CView::OnAbout( void )
 void CView::OnDestroy( void )
 {
 	// End the application when the window is destroyed
+	UnhookWindowsHookEx(caps_khook);
 	::KillTimer( this->GetHwnd(), TIMER_ID );
 	::PostQuitMessage( 0 );
 }
