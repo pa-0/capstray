@@ -26,6 +26,8 @@
 #define IDI_C1N0S1                      134
 #define IDI_C1N1S0                      135
 #define IDI_C1N1S1                      136
+#define IDI_FLAGRU                      150
+#define IDI_FLAGUS                      151
 
 // Custom Events
 #define MSG_TRAYICON (WM_USER+0)
