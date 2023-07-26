@@ -4,6 +4,8 @@
 #include "stdafx.h"
 #include "View.h"
 #include "resource.h"
+#define TIMER_ID 1
+#define TIMER_TIMEOUT_MS 250
 
 HHOOK	g_CapsKeyboardHook;
 HWND g_hWnd;
@@ -11,28 +13,28 @@ HWND g_hWnd;
 #include <sstream>
 
 void NotifyIcon(DWORD message, unsigned char state, bool from_hook) {
-	int idi = IDI_C0N0S0;
+	int icon_id = IDI_C0N0S0;
 	bool scrolllock_on = state & 0x1;
 	bool numlock_on = state & 0x2;
 	bool capslock_on = state & 0x4;
 	//	this is legacy, beause I don't need to support Scroll Lock and Num Lock indicators
 	//	but I want to leave this code here to be able uncomment it if/when needed
 	// switch ( state ) {
-	// 	case 0: idi = IDI_C0N0S0; break;
-	// 	case 1: idi = IDI_C0N0S1; break;
-	// 	case 2: idi = IDI_C0N1S0; break;
-	// 	case 3: idi = IDI_C0N1S1; break;
-	// 	case 4: idi = IDI_C1N0S0; break;
-	// 	case 5: idi = IDI_C1N0S1; break;
-	// 	case 6: idi = IDI_C1N1S0; break;
-	// 	case 7: idi = IDI_C1N1S1; break;
+	// 	case 0: icon_id = IDI_C0N0S0; break;
+	// 	case 1: icon_id = IDI_C0N0S1; break;
+	// 	case 2: icon_id = IDI_C0N1S0; break;
+	// 	case 3: icon_id = IDI_C0N1S1; break;
+	// 	case 4: icon_id = IDI_C1N0S0; break;
+	// 	case 5: icon_id = IDI_C1N0S1; break;
+	// 	case 6: icon_id = IDI_C1N1S0; break;
+	// 	case 7: icon_id = IDI_C1N1S1; break;
 	// 	default: break;
 	// }
 	if (capslock_on) {
-		idi = from_hook? IDI_FLAGUS : IDI_FLAGRU;
+		icon_id = from_hook? IDI_FLAGUS : IDI_FLAGRU;
 	}
 	else {
-		idi = from_hook ? IDI_FLAGRU : IDI_FLAGUS;
+		icon_id = from_hook ? IDI_FLAGRU : IDI_FLAGUS;
 	}
 	NOTIFYICONDATA nid = { 0 };
 	nid.cbSize = sizeof(NOTIFYICONDATA);
@@ -40,7 +42,7 @@ void NotifyIcon(DWORD message, unsigned char state, bool from_hook) {
 	nid.uID = IDW_MAIN;
 	nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
 	nid.uCallbackMessage = MSG_TRAYICON;
-	nid.hIcon = (HICON)(::LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(idi), IMAGE_ICON,
+	nid.hIcon = (HICON)(::LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(icon_id), IMAGE_ICON,
 		::GetSystemMetrics(SM_CXSMICON), ::GetSystemMetrics(SM_CYSMICON), 0));
 
 	lstrcpy(nid.szTip, _T("CapsTray"));
@@ -71,6 +73,7 @@ void CView::OnCreate( void ) {
 	// WM_CREATE message received.
 	// Tasks such as setting the icon, creating child windows, or anything
 	// associated with creating windows are normally performed here.
+	::SetTimer( this->GetHwnd(), TIMER_ID, TIMER_TIMEOUT_MS, NULL );
 	g_hWnd = m_hWnd;
 	g_CapsKeyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, KbdHook, GetModuleHandle(0), 0);
 	NotifyIcon( NIM_ADD, m_capsState, false );
@@ -79,7 +82,14 @@ void CView::OnCreate( void ) {
 
 void CView::OnAbout( void ) {
 	std::wstringstream oss;
-	oss << _T( "CapsTray, by Ron Wilson (c) 2010\nEnhanced by Konstantin Lvov (konstlvov@github :) (c) 2020" ) << std::endl;
+	oss << _T( "CapsTray, by Ron Wilson (c) 2010"
+			"\nEnhanced by Konstantin Lvov (konstlvov@github :) (c) 2023"
+			"\nRelease 2023-07-26"
+			"\n"
+			"\nWhat's new"
+			"\nRelease 2023-07-26:"
+			"\n  * WM_TIMER handling restored"
+			) << std::endl;
 	MessageBox( oss.str().c_str(), _T( "About CapsTray" ), MB_OK | MB_ICONINFORMATION );
 }
 
@@ -138,6 +148,9 @@ LRESULT CView::WndProc( UINT uMsg, WPARAM wParam, LPARAM lParam ) {
 	// the view window here.  Unprocessed messages are passed on for
 	// default processing.
 	switch ( uMsg ) {
+		case WM_TIMER:
+			OnTimer();
+			break;
 		case WM_DESTROY:
 			RemoveIcon();
 			OnDestroy();
@@ -168,3 +181,14 @@ unsigned char CView::GetLockStates( void ) {
 	state |= capslock_on ? 0x4 : 0x0;
 	return state;
 }
+
+void CView::OnTimer( void )
+{
+	unsigned char state = GetLockStates();
+	if ( m_capsState != state )
+	{
+		m_capsState = state;
+		NotifyIcon( NIM_MODIFY, m_capsState, false);
+	}
+}
+
